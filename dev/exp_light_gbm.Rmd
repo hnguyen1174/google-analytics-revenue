@@ -1,0 +1,59 @@
+---
+title: "Exploration: Light GBM"
+author: "Gary Nguyen"
+date: "2021-05-29"
+---
+
+### 1. Set Up
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+library(caret)
+library(lubridate)
+library(lightgbm)
+library(foreach)
+
+devtools::load_all()
+```
+
+```{r load_data}
+
+col_types <- cols(
+  fullVisitorId = col_character(),
+  channelGrouping = col_character(),
+  date = col_datetime(),
+  device = col_character(),
+  geoNetwork = col_character(),
+  socialEngagementType = col_skip(), 
+  totals = col_character(),
+  trafficSource = col_character(),
+  visitId = col_integer(), 
+  visitNumber = col_integer(),
+  visitStartTime = col_integer(),
+  hits = col_skip(),
+  customDimensions = col_skip()
+  )
+
+
+raw_train <- readr::read_csv(
+  file.path(here::here(), 'data/train_v2.csv'), col_types = col_types
+  )
+raw_test <- read_csv(
+  file.path(here::here(), 'data/test_v2.csv'), col_types = col_types
+  )
+```
+
+```{r}
+processed_train <- prc_ggl_data(raw_train)
+processed_test <- prc_ggl_data(raw_test)
+```
+
+
+
+
+
+
+
+
+
