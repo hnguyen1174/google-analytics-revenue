@@ -1,0 +1,30 @@
+---
+title: "Exploration: Data Analysis"
+author: "Gary Nguyen"
+date: "2021-05-29"
+---
+
+```{r}
+library(tidyverse)
+library(glue)
+library(here)
+library(ggplot2)
+```
+
+```{r}
+train <- readRDS(file.path(data_dir, 'processed_train.rds'))
+test <- readRDS(file.path(data_dir, 'processed_test.rds'))
+```
+
+## 1. Check if there is any columns with only one value
+
+```{r}
+columns <- apply(train, 2, function(x) length(unique(x)))
+column_names <- names(columns)
+
+values <- tibble(
+  'columns' = column_names,
+  'num_unique_values' = columns %>% unname()
+)
+```
+

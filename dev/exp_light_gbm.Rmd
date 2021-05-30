@@ -6,15 +6,28 @@ date: "2021-05-29"
 
 ### 1. Set Up
 
-```{r}
+```{r libraries}
+if(!require(tidyverse, quietly = TRUE)) install.packages('tidyverse')
+if(!require(jsonlite, quietly = TRUE)) install.packages('jsonlite')
+if(!require(caret, quietly = TRUE)) install.packages('caret')
+if(!require(lubridate, quietly = TRUE)) install.packages('lubridate')
+if(!require(lightgbm, quietly = TRUE)) install.packages('lightgbm')
+if(!require(foreach, quietly = TRUE)) install.packages('foreach')
+if(!require(glue, quietly = TRUE)) install.packages('glue')
+if(!require(zeallot, quietly = TRUE)) install.packages('zeallot')
+
 library(tidyverse)
 library(jsonlite)
 library(caret)
 library(lubridate)
 library(lightgbm)
 library(foreach)
+library(glue)
+library(zeallot)
 
 devtools::load_all()
+
+data_dir <- file.path(here::here(), 'data')
 ```
 
 ```{r load_data}
@@ -37,23 +50,138 @@ col_types <- cols(
 
 
 raw_train <- readr::read_csv(
-  file.path(here::here(), 'data/train_v2.csv'), col_types = col_types
+  file.path(data_dir, 'train_v2.csv'), col_types = col_types
   )
 raw_test <- read_csv(
-  file.path(here::here(), 'data/test_v2.csv'), col_types = col_types
+  file.path(data_dir, 'test_v2.csv'), col_types = col_types
   )
 ```
 
-```{r}
+### 2. Process Data
+
+```{r process_data}
 processed_train <- prc_ggl_data(raw_train)
 processed_test <- prc_ggl_data(raw_test)
 ```
 
+```{r save_processed}
+saveRDS(processed_train, file.path(data_dir, 'processed_train.rds'))
+saveRDS(processed_test, file.path(data_dir, 'processed_test.rds'))
+```
 
+### 3. Get Training Parts
 
+```{r full_processed}
+full_processed <- processed_train %>% 
+  bind_rows(processed_test)
+```
 
+```{r train_parts}
+message(glue('Getting Train Set from {get_time_log(full_processed, 1, "start")} to {get_time_log(full_processed, 1, "end")}.\n\n'))
+train_1 = prep_partition_train(full_processed, 1)
 
+message(glue('Getting Train Set from {get_time_log(full_processed, 2, "start")} to {get_time_log(full_processed, 2, "end")}.\n\n'))
+train_2 = prep_partition_train(full_processed, 2)
 
+message(glue('Getting Train Set from {get_time_log(full_processed, 3, "start")} to {get_time_log(full_processed, 3, "end")}.\n\n'))
+train_3 = prep_partition_train(full_processed, 3)
+
+message(glue('Getting Train Set from {get_time_log(full_processed, 4, "start")} to {get_time_log(full_processed, 4, "end")}.\n\n'))
+train_4 = prep_partition_train(full_processed, 4)
+```
+
+```{r train_5}
+train_5 <- full_processed %>% 
+  filter(date >= as.Date('2018-05-01'))
+max_bound <- max(train_5$date)
+min_bound <- min(train_5$date)
+
+train_5 <- prc_partition_train(train_5)
+
+train_5 <- train_5 %>% 
+  mutate(target = NA,
+         ret = NA)
+```
+
+```{r agg_df}
+agg_df = train_1 %>% 
+  bind_rows(train_2) %>% 
+  bind_rows(train_3) %>% 
+  bind_rows(train_4) %>% 
+  bind_rows(train_5) %>% 
+  mutate_at(vars(interval_dates, 
+                 last_ses_from_the_period_end,
+                 first_ses_from_the_period_start), as.integer) %>% 
+  mutate_at(vars(2, 8:19), ~{as.numeric(as.factor(.))})
+
+train_lgbm <- agg_df %>% filter(!is.na(target))
+test_lgbm <- agg_df %>% filter(is.na(target))
+```
+
+### 4. Models
+
+```{r lgb_params}
+lgb_params_1 <- list(
+  objective = 'binary',
+  max_bin = 256,
+  learning_rate = 0.01,
+  num_leaves = 15,
+  bagging_fraction = 0.9,
+  feature_fraction = 0.8,
+  min_data = 1,
+  bagging_freq = 1,
+  metric = 'binary_logloss'
+  )
+
+lgb_params_2 <- list(
+  objective = 'regression',
+  max_bin = 256,
+  learning_rate = 0.01,
+  num_leaves = 9,
+  bagging_fraction = 0.9,
+  feature_fraction = 0.8,
+  min_data = 1,
+  bagging_freq = 1,
+  metric = 'rmse'
+  )
+```
+
+```{r matrices}
+cols_to_exclude <- c('fullVisitorId', 'target', 'ret')
+
+train_matrix_all <- lgb.Dataset(
+  train_lgbm %>% select(-all_of(cols_to_exclude)) %>% as.matrix,
+  label = train_lgbm %>% pull(ret)
+)
+
+train_matrix_ret <- lgb.Dataset(
+  train_lgbm %>% filter(ret == 1) %>% select(-all_of(cols_to_exclude)) %>% as.matrix,
+  label = train_lgbm %>% filter(ret == 1) %>% pull(ret)
+)
+
+test_matrix <- test_lgbm %>% 
+  select(-one_of(cols_to_exclude)) %>% 
+  as.matrix()
+```
+
+```{r model}
+c(imp_total, lgb_preds) %<-% run_lgbm(
+  train_matrix_all, train_matrix_ret, 
+  test_matrix,
+  lgb_params_1, lgb_params_2
+)
+```
+
+### 5. Save Predictions
+
+```{r save_predictions}
+lgb_preds_df = tibble(
+  fullVisitorId = test_lgbm$fullVisitorId, 
+  PredictedLogRevenue = lgb_preds_final
+  )
+
+saveRDS(lgb_preds_df, file.path(data_dir, 'lgb_preds_df.rds'))
+```
 
 
 
