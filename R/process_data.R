@@ -30,7 +30,7 @@ prep_cols <- function(package = 'GglAnalyticsRev') {
 #'
 #' @return processed Google Analytics data
 #' @export
-prc_ggl_data <- function(raw_data, cols_to_choose = prep_cols()) {
+prc_ggl_data <- function(raw_data, select_cols = TRUE, cols_to_choose = prep_cols()) {
   
   processed_data <- raw_data %>% 
     
@@ -51,11 +51,15 @@ prc_ggl_data <- function(raw_data, cols_to_choose = prep_cols()) {
     unnest(totals_prc) %>% 
     
     # Remove origin json-like columns
-    select(-device, -trafficSource, -totals) %>% 
-    select(all_of(cols_to_choose)) %>% 
-    mutate(date = ymd(date)) %>% 
-    mutate_at(vars(18:26, 31), as.integer) %>% 
-    mutate(transactionRevenue = ifelse(is.na(transactionRevenue), 0, transactionRevenue))
+    select(-device, -trafficSource, -totals)
+  
+  if (select_cols) {
+    processed_data <- processed_data %>% 
+      select(all_of(cols_to_choose)) %>% 
+      mutate(date = ymd(date)) %>% 
+      mutate_at(vars(18:26, 31), as.integer) %>% 
+      mutate(transactionRevenue = ifelse(is.na(transactionRevenue), 0, transactionRevenue))
+  }
   
   processed_data
 }

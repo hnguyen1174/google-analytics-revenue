@@ -4,27 +4,281 @@ author: "Gary Nguyen"
 date: "2021-05-29"
 ---
 
-```{r}
+```{r library}
 library(tidyverse)
 library(glue)
 library(here)
 library(ggplot2)
+library(ggthemes)
 ```
 
-```{r}
-train <- readRDS(file.path(data_dir, 'processed_train.rds'))
-test <- readRDS(file.path(data_dir, 'processed_test.rds'))
+```{r load_train_test}
+raw_train <- readr::read_csv(
+  file.path(data_dir, 'train_v2.csv'), col_types = col_types
+  )
+raw_test <- read_csv(
+  file.path(data_dir, 'test_v2.csv'), col_types = col_types
+  )
+
+train <- prc_ggl_data(raw_train, select_cols = FALSE)
+test <- prc_ggl_data(raw_test, select_cols = FALSE)
 ```
 
-## 1. Check if there is any columns with only one value
+```{r processed_train}
+# Training Set:
+train <- train %>% 
+  mutate(totalTransactionRevenue = ifelse(is.na(totalTransactionRevenue), 0, totalTransactionRevenue)) %>% 
+  mutate(purchased = ifelse(totalTransactionRevenue > 0, 1, 0))
 
-```{r}
-columns <- apply(train, 2, function(x) length(unique(x)))
-column_names <- names(columns)
+test <- test %>% 
+  mutate(totalTransactionRevenue = ifelse(is.na(totalTransactionRevenue), 0, totalTransactionRevenue)) %>% 
+  mutate(purchased = ifelse(totalTransactionRevenue > 0, 1, 0))
+```
 
-values <- tibble(
+```{r save_data_with_purchase}
+saveRDS(train, file.path(data_dir, 'main_train.rds'))
+saveRDS(test, file.path(data_dir, 'main_test.rds'))
+```
+
+#### 1. Check if there is any columns with only one value
+
+In the training and test set, 18 features only have 1 values. For the modelling purpose, I removed these features.
+
+```{r check_unique_val_train}
+columns_val_num <- apply(train, 2, function(x) length(unique(x)))
+column_names <- names(columns_val_num)
+
+values_train <- tibble(
   'columns' = column_names,
-  'num_unique_values' = columns %>% unname()
-)
+  'num_unique_values' = columns_val_num
+) %>% arrange(num_unique_values)
+
+values_train
 ```
+
+```{r check_unique_val_test}
+columns_val_num <- apply(test, 2, function(x) length(unique(x)))
+column_names <- names(columns_val_num)
+
+values_test <- tibble(
+  'columns' = column_names,
+  'num_unique_values' = columns_val_num
+) %>% arrange(num_unique_values)
+
+values_test
+```
+
+#### 2. Check if there is any columns with NA values
+
+In the training set, there are 18 columns with NA values, and specifically, `totalTransactionRevenue` has most NA values.
+In the test set, there are 14 columns with NA values.
+
+```{r col_na_train}
+num_na <- colSums(is.na(train))
+column_names <- names(num_na)
+
+col_na_train <- tibble(
+  'columns' = column_names,
+  'num_na' = num_na
+) %>% arrange(desc(num_na))
+
+col_na_train
+```
+
+```{r col_na_test}
+num_na <- colSums(is.na(test))
+column_names <- names(num_na)
+
+col_na_test <- tibble(
+  'columns' = column_names,
+  'num_na' = num_na
+) %>% arrange(desc(num_na))
+
+col_na_test
+```
+
+### 3. Referral has a higher chance of paying
+
+```{r purchased_by_channels}
+p <- train %>% 
+  select(fullVisitorId, channelGrouping, purchased) %>% 
+  group_by(channelGrouping, purchased) %>% 
+  tally() %>% 
+  ungroup() %>%
+  mutate(purchased = as.character(purchased)) %>% 
+  ggplot(aes(x = channelGrouping, y = n, fill = purchased)) +
+  geom_bar(position = position_dodge2(width = 0.9, preserve = 'single'), stat = 'identity') +
+  coord_flip() +
+  theme_hc() +
+  xlab('Visits') +
+  ylab('Channel') +
+  ggtitle('Visit Types by Channels')
+
+print(p)
+
+ggsave(file.path(here::here(), 'figures/purchased_by_channels.png'), p)
+```
+
+### 4. High fullVisitorId has more purchased?
+
+Question: Do high `fullVisitorId` make you act differently?
+
+```{r fullVisitorId_density_no_transform}
+p <- train %>% 
+  mutate(fullVisitorId = as.numeric(fullVisitorId)) %>% 
+  ggplot(aes(x = fullVisitorId, fill = purchased)) +
+  geom_density(alpha = 0.5, aes(fill = factor(purchased))) + 
+  labs(title = 'Density of purchased, given fullVisitorId (No Transform)') +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) + 
+  theme_grey() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  xlab('fullVisitorId') +
+  ylab('Density') +
+  theme_hc()
+
+print(p)
+ggsave(file.path(here::here(), 'figures/fullVisitorId_density_no_transform.png'), p)
+```
+
+Probably not, because a transformation of `^(1/3)` makes them act the same.
+
+```{r fullVisitorId_density}
+p <- train %>% 
+  mutate(fullVisitorId = as.numeric(fullVisitorId)) %>% 
+  ggplot(aes(x = fullVisitorId^(1/3), fill = purchased)) +
+  geom_density(alpha = 0.5, aes(fill = factor(purchased))) + 
+  labs(title = 'Density of purchased, given fullVisitorId (Transformed)') +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) + 
+  theme_grey() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  xlab('fullVisitorId') +
+  ylab('Density') +
+  theme_hc()
+
+print(p)
+ggsave(file.path(here::here(), 'figures/fullVisitorId_density.png'), p)
+```
+
+### 5. Does higher visitNumber mean higher likelihood of purchase?
+
+It seems like higher number of visits does mean higher likelihood of transaction.
+
+```{r purchased_num_visits}
+p <- train %>% 
+  ggplot(aes(x = log(visitNumber), fill = purchased)) +
+  geom_density(alpha = 0.5, aes(fill = factor(purchased))) + 
+  labs(title = 'Density of purchased, given visitNumber') +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) + 
+  theme_hc() +
+  xlab('Log of Number of Visits') +
+  ylab('Density')
+
+print(p)
+ggsave(file.path(here::here(), 'figures/purchased_num_visits.png'), p)
+```
+
+### 6. Does Visit Start Time influence purchase?
+
+It seems like more recent visits mean fewer purchases.
+
+```{r purchased_start_time}
+p <- train %>% 
+  ggplot(aes(x = visitStartTime, fill = purchased)) +
+  geom_density(alpha = 0.5, aes(fill = factor(purchased))) + 
+  labs(title = 'Density of purchased, given visitStartTime') +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  theme_hc() +
+  xlab('Visit Start Time') +
+  ylab('Density')
+
+print(p)
+ggsave(file.path(here::here(), 'figures/purchased_start_time.png'), p)
+```
+
+### 7. Does the Type of device matter?
+
+Desktops have a higher likelihood to make a purchase.
+
+```{r purchased_by_device_cat}
+p <- train %>% 
+  group_by(deviceCategory, purchased) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  mutate(purchased = as.character(purchased)) %>% 
+  ggplot(aes(x = deviceCategory, y = n, fill = purchased, label = n)) +
+  geom_bar(stat = 'identity') +
+  geom_text(vjust = -0.5, size = 3) +
+  theme_hc() +
+  xlab('Device Category') +
+  ylab('Count') +
+  ggtitle('Purchase by Device Category')
+
+print(p)
+ggsave(file.path(here::here(), 'figures/purchased_by_device_cat.png'), p)
+```
+
+### 8. Geographic Analysis: Continent
+
+The Americas (naturally) has the highest number of purchase-related visits.
+
+```{r purchased_by_continent}
+p <- train %>% 
+  group_by(purchased, continent) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  mutate(purchased = as.character(purchased)) %>% 
+  ggplot(aes(x = continent, y = n, fill = purchased, label = n)) +
+  geom_bar(stat = 'identity', position = position_dodge2(width = 0.9, preserve = 'single')) +
+  theme_hc() +
+  xlab('Continent') +
+  ylab('Count') +
+  ggtitle('Purchase by Continent')
+
+print(p)
+ggsave(file.path(here::here(), 'figures/purchased_by_continent.png'), p)
+```
+
+### 9. Look at Total Hits
+
+High number of hits signals likelihood to make a purchase.
+
+```{r purchased_by_hits}
+p <- train %>% 
+  mutate(hits = as.numeric(hits)) %>% 
+  ggplot(aes(x = log(hits), fill = purchased)) +
+  geom_density(alpha = 0.5, aes(fill = factor(purchased))) + 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) + 
+  theme_hc() +
+  ggtitle('Density of Purchased, Given log(hits)') +
+  xlab('log(hits)') +
+  ylab('Density')
+
+print(p)
+ggsave(file.path(here::here(), 'figures/purchased_by_hits.png'), p)
+```
+
+### 10. Look at Total Hits
+
+```{r purchased_by_pageviews}
+p <- train %>% 
+  mutate(pageviews = as.numeric(pageviews)) %>% 
+  ggplot(aes(x = log(pageviews), fill = purchased)) +
+  geom_density(alpha = 0.5, aes(fill = factor(purchased))) + 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) + 
+  theme_hc() +
+  ggtitle('Density of Purchased, Given log(pageviews)') +
+  xlab('log(pageviews)') +
+  ylab('Density')
+
+print(p)
+ggsave(file.path(here::here(), 'figures/purchased_by_pageviews.png'), p)
+```
+
+
+
+
+
+
+
 
