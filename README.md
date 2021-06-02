@@ -2,15 +2,17 @@
 
 ### 0. Legend
 
-* Project Overview
-* Project Structure
-* Clone the Repository
-* Random Forest Model Pipeline
-* Light GBM Model Pipeline
-* Insights
-* Customer Revenue Prediction App
-* Project Artifacts
-* Next Steps
+* [Project Overview](https://github.com/hnguyen1174/google-analytics-revenue#1-project-overview)
+* [Project Structure](https://github.com/hnguyen1174/google-analytics-revenue#2-project-structure)
+* [Clone the Repository](https://github.com/hnguyen1174/google-analytics-revenue#3-clone-the-repository)
+* [The Data and EDA](https://github.com/hnguyen1174/google-analytics-revenue#4-the-data-and-eda)
+* [Method](https://github.com/hnguyen1174/google-analytics-revenue#4-the-data-and-eda)
+* [Random Forest Model Pipeline](https://github.com/hnguyen1174/google-analytics-revenue#6-random-forest-model-pipeline)
+* [Light GBM Model Pipeline](https://github.com/hnguyen1174/google-analytics-revenue#7-light-gbm-model-pipeline)
+* [Insights](https://github.com/hnguyen1174/google-analytics-revenue#7-light-gbm-model-pipeline)
+* [Customer Revenue Prediction App](https://github.com/hnguyen1174/google-analytics-revenue#7-light-gbm-model-pipeline)
+* [Project Artifacts](https://github.com/hnguyen1174/google-analytics-revenue#7-light-gbm-model-pipeline)
+* [Next Steps](https://github.com/hnguyen1174/google-analytics-revenue#7-light-gbm-model-pipeline)
 
 ### 1. Project Overview
 
