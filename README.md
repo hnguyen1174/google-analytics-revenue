@@ -36,6 +36,41 @@ The success criteria is to achieve a root mean square error (RMSE) less than 0.9
 
 ### 2. Project Structure
 
+
+```
+├── README.md                              <- You are here
+├── app
+│   ├── templates/                         <- HTML files that is templated and changes based on a set of inputs
+│   ├── Dockerfile_App                     <- Dockerfile for building image to run app 
+│   ├── Dockerfile_Pipeline                <- Dockerfile for building image to run the random forest model pipeline  
+│
+├── config                                 <- Directory for configuration files 
+│   ├── logging/                           <- Configuration of python loggers
+│   ├── .aws                               <- Configurations for AWS and RDS
+│   ├── flaskconfig.py                     <- Configurations for Flask API
+│   ├── config.yml                         <- Configurations for developing and evaluating the model
+│   ├── reproducibility_test_config.yml    <- Configurations for reproducibility tests
+│
+├── data                                   <- Folder that contains data used or generated. 
+│
+├── deliverables/                          <- Presentation Slide
+│
+├── r_scripts/                             <- Folder that contains data processing and exploratory data analysis outputs in R
+│
+├── models/                                <- Trained model objects, model predictions, feature importance and model evaluations
+│
+├── src/                                   <- Source code for the project 
+│
+├── test/                                  <- Files necessary for running unit tests and reproducibility tests
+│   ├── reproducibility_true/              <- expected files for reproduciblity tests
+│   ├── unit_test_true                     <- input and expect files for unit tests
+│
+├── app.py                                 <- Flask wrapper for running the model 
+├── run.py                                 <- Simplifies the execution of one or more of the src scripts  
+├── requirements.txt                       <- Python package dependencies 
+
+```
+
 ### 3. Clone the Repository
 
 ### 4. The Data and EDA
