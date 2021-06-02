@@ -39,3 +39,4 @@ vignettes/*.pdf
 .Renviron
 
 tmp/*
+r_scripts/data/*
