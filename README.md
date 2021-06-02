@@ -75,6 +75,18 @@ The success criteria is to achieve a root mean square error (RMSE) less than 0.9
 
 ### 3. Clone the Repository
 
+In order to run the codes and the app, you first need to clone the repo to your local machine:
+
+```
+# To clone the repo
+$ git clone https://github.com/hnguyen1174/google-analytics-revenue.git
+
+# Go to the working directory
+$ cd google-analytics-revenue
+```
+
+If you want to examine and run the R scripts, please go to `r_scripts` and open the R project `google-analytics-revenue.Rproj`.
+
 ### 4. The Data and EDA
 
 ### 5. Methods
