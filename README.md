@@ -125,6 +125,31 @@ I also created a separate data field: `purchased`. This field will be 1 if `tota
 
 #### 4.2. EDA
 
+I will write a comprehensive EDA later. But these are some of the most important findings:
+
+**(1) Pageviews and hits are highly indicative of whether the user will make a purchase**
+
+![](r_scripts/figures/purchased_by_pageviews.png)
+![](r_scripts/figures/purchased_by_hits.png)
+
+**(2) Later start time seems to indicate lower level of purchase**
+
+![](r_scripts/figures/purchased_start_time.png)
+
+**(3) Referral, organic search and direct marketing seems to increase level of purchase**
+
+![](r_scripts/figures/purchased_by_channels.png)
+
+**(4) The US has both the highest number of visits and transactions; but outside of the US, India has the highest number of visits; and Canada & Venezuela (?) have the highest amount of transactions.**
+
+![](r_scripts/figures/purchased_by_continent.png)
+
+Visits by Country
+![](r_scripts/figures/visits_by_countries.png)
+
+Transactions by Country
+![](r_scripts/figures/transactions_by_countries.png)
+
 ### 5. Methods
 
 ### 6. Random Forest Model Pipeline

@@ -12,6 +12,7 @@ library(glue)
 library(here)
 library(ggplot2)
 library(ggthemes)
+library(echarts4r)
 
 data_dir <- file.path(here::here(), 'data')
 ```
@@ -269,7 +270,7 @@ print(p)
 ggsave(file.path(here::here(), 'figures/purchased_by_hits.png'), p)
 ```
 
-### 10. Look at Total Hits
+### 10. Look at Page Views
 
 ```{r purchased_by_pageviews}
 p <- train %>% 
@@ -284,6 +285,61 @@ p <- train %>%
 
 print(p)
 ggsave(file.path(here::here(), 'figures/purchased_by_pageviews.png'), p)
+```
+
+## 11. Geographic Distribution: Country
+
+```{r df_for_echarts}
+count_country <- train %>% 
+  group_by(country) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  arrange(desc(n))
+
+df_for_echarts <- tibble(country = countrycode::codelist$country.name.en) %>% 
+  left_join(count_country, by = 'country') %>% 
+  mutate(n = replace_na(n, 0)) %>% 
+  dplyr::rename(visits = n)
+```
+
+```{r visit_distribution}
+cns <- countrycode::codelist$country.name.en
+cns <- data.frame(
+  country = df_for_echarts$country,
+  value = df_for_echarts$visits
+) %>% 
+  filter(country != 'United States')
+
+cns %>% 
+  e_charts(country) %>% 
+  e_map(value) %>% 
+  e_visual_map(value)
+```
+
+```{r transactions_distribution}
+transaction_country <- train %>% 
+  mutate(totalTransactionRevenue = as.numeric(totalTransactionRevenue)) %>% 
+  group_by(country) %>% 
+  summarize(country_transaction_rev = sum(totalTransactionRevenue)) %>% 
+  ungroup() %>% 
+  arrange(desc(country_transaction_rev))
+
+df_rev_for_echarts <- tibble(country = countrycode::codelist$country.name.en) %>% 
+  left_join(transaction_country, by = 'country') %>% 
+  mutate(country_transaction_rev = replace_na(country_transaction_rev, 0))
+```
+
+```{r visit_distribution_map}
+cns <- data.frame(
+  country = df_rev_for_echarts$country,
+  value = df_rev_for_echarts$country_transaction_rev
+) %>% 
+  filter(country != 'United States')
+
+cns %>% 
+  e_charts(country) %>% 
+  e_map(value) %>% 
+  e_visual_map(value)
 ```
 
 
